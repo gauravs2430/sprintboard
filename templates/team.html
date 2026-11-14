@@ -1,0 +1,65 @@
+{% extends "project_base.html" %}
+{% block pcontent %}
+<div class="two-col wide-left">
+  <section>
+    <h2>Team <span class="count">{{ members|length }}</span></h2>
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th>{% if role == 'scrum_master' %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+      {% for m in members %}
+        <tr>
+          <td><span class="avatar">{{ m.name|initials }}</span> {{ m.name }}{% if m.id == project.owner_id %} <span class="muted small">(owner)</span>{% endif %}</td>
+          <td>{{ m.email }}</td>
+          <td>
+            {% if role == 'scrum_master' %}
+            <form method="post" action="{{ url_for('change_role', pid=project.id, uid=m.id) }}" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <select name="role" data-autosubmit>{% for key, label in ROLES %}<option value="{{ key }}" {{ 'selected' if key == m.role }}>{{ label }}</option>{% endfor %}</select>
+              <noscript><button class="btn btn-sm">Save</button></noscript>
+            </form>
+            {% else %}{{ role_label[m.role] }}{% endif %}
+          </td>
+          {% if role == 'scrum_master' %}
+          <td>{% if m.id != project.owner_id %}
+            <form method="post" action="{{ url_for('remove_member', pid=project.id, uid=m.id) }}">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm">Remove</button></form>
+          {% endif %}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    {% if role == 'scrum_master' %}
+    <h2>Add a member</h2>
+    <form method="post" action="{{ url_for('add_member', pid=project.id) }}" class="panel stack">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Email of a registered user <input type="email" name="email" required></label>
+      <label>Role <select name="role">{% for key, label in ROLES %}<option value="{{ key }}" {{ 'selected' if key == 'developer' }}>{{ label }}</option>{% endfor %}</select></label>
+      <div><button class="btn btn-primary">Add to team</button></div>
+    </form>
+    {% endif %}
+
+    <h2>What each role can do</h2>
+    <table class="table">
+      <thead><tr><th>Action</th><th>SM</th><th>PO</th><th>Dev</th></tr></thead>
+      <tbody>
+        <tr><td>Add, edit and move items; comment</td><td>✓</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Delete items</td><td>✓</td><td>✓</td><td></td></tr>
+        <tr><td>Create, start and complete sprints</td><td>✓</td><td></td><td></td></tr>
+        <tr><td>Add or remove members, change roles</td><td>✓</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    {% if project.owner_id == g.user.id %}
+    <form method="post" action="{{ url_for('delete_project', pid=project.id) }}" class="danger-zone">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="check"><input type="checkbox" required> Delete this project and all its sprints and items</label>
+      <button class="btn btn-danger btn-sm">Delete project</button>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="two-col">
+  <section>
+    <h2>My projects</h2>
+    {% if projects %}
+    <div class="project-grid">
+      {% for p in projects %}
+      <a class="project-card" href="{{ url_for('backlog', pid=p.id) }}">
+        <div class="project-card-top"><span class="key">{{ p.key }}</span><strong>{{ p.name }}</strong></div>
+        <p class="muted">{{ p.description or 'No description' }}</p>
+        <div class="project-card-foot">
+          <span>{{ role_label[p.role] }}</span>
+          <span>{{ p.member_count }} member{{ '' if p.member_count == 1 else 's' }}</span>
+          <span>{{ p.open_count }} open</span>
+        </div>
+        <div class="sprint-line {{ 'active' if p.active_sprint }}">
+          {{ p.active_sprint ~ ' in progress' if p.active_sprint else 'No active sprint' }}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">You are not in any project yet. Create one below, or ask a Scrum Master to add you by email.</p>
+    {% endif %}
+
+    <h2>New project</h2>
+    <form method="post" action="{{ url_for('create_project') }}" class="panel stack">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Project name <input type="text" name="name" maxlength="80" required></label>
+      <label>Description <input type="text" name="description" maxlength="200" placeholder="Optional"></label>
+      <div><button class="btn btn-primary">Create project</button></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>My open tasks <span class="count">{{ my_tasks|length }}</span></h2>
+    {% if my_tasks %}
+    <ul class="plain-list panel">
+      {% for t in my_tasks %}
+      <li class="row-item static">
+        <span class="tag tag-{{ t.type }}">{{ t.type }}</span>
+        <a class="row-title" href="{{ url_for('task_detail', pid=t.project_id, tid=t.id) }}">
+          <span class="tkey">{{ t.project_key }}-{{ t.number }}</span>{{ t.title }}
+        </a>
+        <span class="status status-{{ t.status }}">{{ status_label[t.status] }}</span>
+        {% if t.due_date %}<span class="due {{ 'late' if t.due_date < today }}">{{ t.due_date|nice_date }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Nothing assigned to you right now.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

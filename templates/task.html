@@ -1,0 +1,65 @@
+{% extends "project_base.html" %}
+{% block pcontent %}
+<p class="crumb">
+  <a href="{{ url_for('board', pid=project.id) if sprint and sprint.status == 'active' else url_for('backlog', pid=project.id) }}">← Back</a>
+  <span class="tkey">{{ project.key }}-{{ task.number }}</span>
+  {% if sprint %}<span class="muted small">in {{ sprint.name }}{{ ' (completed)' if locked }}</span>{% else %}<span class="muted small">in backlog</span>{% endif %}
+</p>
+
+<div class="two-col wide-left">
+  <section>
+    <form method="post" class="panel stack" id="task-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Title <input type="text" name="title" value="{{ task.title }}" maxlength="160" required></label>
+      <label>Description and acceptance criteria
+        <textarea name="description" rows="7">{{ task.description }}</textarea></label>
+      <div class="form-row">
+        <label>Type <select name="type">{% for t in TYPES %}<option value="{{ t }}" {{ 'selected' if t == task.type }}>{{ t|capitalize }}</option>{% endfor %}</select></label>
+        <label>Priority <select name="priority">{% for p in PRIORITIES %}<option value="{{ p }}" {{ 'selected' if p == task.priority }}>{{ p|capitalize }}</option>{% endfor %}</select></label>
+        <label>Story points <input type="number" name="points" min="0" max="100" value="{{ task.points }}"></label>
+      </div>
+      <div class="form-row">
+        <label>Status <select name="status" {{ 'disabled' if locked }}>
+          {% for key, label in STATUSES %}<option value="{{ key }}" {{ 'selected' if key == task.status }}>{{ label }}</option>{% endfor %}</select></label>
+        <label>Assignee <select name="assignee_id">
+          <option value="">Unassigned</option>
+          {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if m.id == task.assignee_id }}>{{ m.name }}</option>{% endfor %}</select></label>
+        <label>Due date <input type="date" name="due_date" value="{{ task.due_date or '' }}"></label>
+      </div>
+      {% if not locked %}
+      <label>Sprint <select name="sprint_id">
+        <option value="">Backlog</option>
+        {% for s in open_sprints %}<option value="{{ s.id }}" {{ 'selected' if s.id == task.sprint_id }}>{{ s.name }}{{ ' (active)' if s.status == 'active' }}</option>{% endfor %}</select></label>
+      {% endif %}
+      <div class="btn-row"><button class="btn btn-primary">Save changes</button></div>
+    </form>
+
+    {% if role in ('scrum_master', 'product_owner') %}
+    <form method="post" action="{{ url_for('delete_task', pid=project.id, tid=task.id) }}" class="danger-zone">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="check"><input type="checkbox" required> I want to delete this item permanently</label>
+      <button class="btn btn-danger btn-sm">Delete item</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section id="comments">
+    <h2>Comments <span class="count">{{ comments|length }}</span></h2>
+    {% for c in comments %}
+    <div class="comment">
+      <span class="avatar">{{ c.author|initials }}</span>
+      <div><strong>{{ c.author }}</strong> <span class="muted small">{{ c.created_at|nice_datetime }}</span>
+        <p>{{ c.body }}</p></div>
+    </div>
+    {% else %}
+    <p class="empty">No comments yet.</p>
+    {% endfor %}
+    <form method="post" action="{{ url_for('add_comment', pid=project.id, tid=task.id) }}" class="stack">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <textarea name="body" rows="3" placeholder="Write a comment…" required></textarea>
+      <div><button class="btn">Add comment</button></div>
+    </form>
+    <p class="muted small">Created {{ task.created_at|nice_datetime }}{% if task.completed_at %} · Done {{ task.completed_at|nice_datetime }}{% endif %}</p>
+  </section>
+</div>
+{% endblock %}

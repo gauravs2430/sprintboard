@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · SprintBoard{% endblock %}
+{% block content %}
+<div class="project-head">
+  <div>
+    <h1><span class="key">{{ project.key }}</span>{{ project.name }}</h1>
+    {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
+  </div>
+  <span class="role-chip">You: {{ role_label[role] }}</span>
+</div>
+<nav class="tabs">
+  <a class="{{ 'on' if tab == 'backlog' }}" href="{{ url_for('backlog', pid=project.id) }}">Backlog &amp; Sprints</a>
+  <a class="{{ 'on' if tab == 'board' }}" href="{{ url_for('board', pid=project.id) }}">Sprint Board</a>
+  <a class="{{ 'on' if tab == 'reports' }}" href="{{ url_for('reports', pid=project.id) }}">Reports</a>
+  <a class="{{ 'on' if tab == 'team' }}" href="{{ url_for('team', pid=project.id) }}">Team</a>
+</nav>
+{% block pcontent %}{% endblock %}
+{% endblock %}

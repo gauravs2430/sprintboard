@@ -1,0 +1,36 @@
+{% extends "project_base.html" %}
+{% from "_macros.html" import task_card with context %}
+{% block pcontent %}
+{% if sprint %}
+<div class="section-head">
+  <div>
+    <h2>{{ sprint.name }}</h2>
+    <span class="muted small">{{ sprint.start_date|nice_date }} – {{ sprint.end_date|nice_date }}
+      · {% if days_left > 0 %}{{ days_left }} day{{ '' if days_left == 1 else 's' }} left{% elif days_left == 0 %}Last day{% else %}{{ -days_left }} day{{ '' if days_left == -1 else 's' }} overdue{% endif %}
+      {% if sprint.goal %}· Goal: {{ sprint.goal }}{% endif %}</span>
+  </div>
+  {% if role == 'scrum_master' %}
+  <form method="post" action="{{ url_for('complete_sprint', pid=project.id, sid=sprint.id) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm">Complete sprint</button></form>
+  {% endif %}
+</div>
+
+<div class="board" id="board" data-pid="{{ project.id }}">
+  {% for col in columns %}
+  <div class="board-col col-{{ col.key }}">
+    <div class="board-col-head">
+      <span>{{ col.label }}</span>
+      <span class="muted small"><span class="col-count">{{ col.tasks|length }}</span> · <span class="col-points">{{ col.points }}</span> pts</span>
+    </div>
+    <ul class="board-list" data-status="{{ col.key }}">
+      {% for t in col.tasks %}{{ task_card(t, project) }}{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+<p class="muted small">Drag a card to another column to update its status.</p>
+{% else %}
+<p class="empty">No sprint is active. Go to <a href="{{ url_for('backlog', pid=project.id) }}">Backlog &amp; Sprints</a>,
+  create a sprint, drag items into it and start it.</p>
+{% endif %}
+{% endblock %}

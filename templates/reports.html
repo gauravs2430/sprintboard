@@ -1,0 +1,95 @@
+{% extends "project_base.html" %}
+{% block pcontent %}
+{% if not selected %}
+<p class="empty">Reports appear once a sprint has been started.</p>
+{% else %}
+<div class="section-head">
+  <h2>{{ selected.name }} <span class="status status-{{ 'in_progress' if selected.status == 'active' else 'done' }}">{{ 'Active' if selected.status == 'active' else 'Completed' }}</span></h2>
+  <form method="get" class="inline-form">
+    <label class="small muted">Sprint
+      <select name="sprint" data-autosubmit>
+        {% for s in sprints %}<option value="{{ s.id }}" {{ 'selected' if s.id == selected.id }}>{{ s.name }}{{ ' (active)' if s.status == 'active' }}</option>{% endfor %}
+      </select></label>
+    <noscript><button class="btn btn-sm">Show</button></noscript>
+  </form>
+</div>
+
+<div class="tiles">
+  <div class="tile"><span class="tile-label">Committed</span><span class="tile-value">{{ burndown.total }}</span><span class="tile-unit">points</span></div>
+  <div class="tile"><span class="tile-label">Done</span><span class="tile-value">{{ burndown.done }}</span><span class="tile-unit">points</span></div>
+  <div class="tile"><span class="tile-label">Remaining</span><span class="tile-value">{{ burndown.remaining }}</span><span class="tile-unit">points</span></div>
+  <div class="tile"><span class="tile-label">Progress</span><span class="tile-value">{{ (100 * burndown.done / burndown.total)|round|int if burndown.total else 0 }}%</span>
+    <span class="tile-unit">{% if days_left is not none %}{{ days_left if days_left > 0 else 0 }} day{{ '' if days_left == 1 else 's' }} left{% else %}{{ selected.start_date|nice_date }} – {{ selected.end_date|nice_date }}{% endif %}</span></div>
+</div>
+
+<div class="chart-panel">
+  <h3>Sprint burndown</h3>
+  <p class="muted small">Story points remaining at the end of each day, against the ideal straight line.</p>
+  <div class="chart-box"><canvas id="burndown"></canvas></div>
+</div>
+
+<div class="two-col">
+  <div class="chart-panel">
+    <h3>Velocity</h3>
+    <p class="muted small">Points committed and completed in each finished sprint.{% if avg_velocity is not none %} Average of last 3: {{ avg_velocity }}.{% endif %}</p>
+    {% if velocity.labels %}<div class="chart-box short"><canvas id="velocity"></canvas></div>
+    {% else %}<p class="empty">Complete a sprint to see velocity.</p>{% endif %}
+  </div>
+  <div class="chart-panel">
+    <h3>Workload by member</h3>
+    <p class="muted small">Points in {{ selected.name }} per person.</p>
+    {% if workload.labels %}<div class="chart-box short"><canvas id="workload"></canvas></div>
+    {% else %}<p class="empty">No items in this sprint.</p>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if selected %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+  const burndown = {{ burndown|tojson }};
+  const velocity = {{ velocity|tojson }};
+  const workload = {{ workload|tojson }};
+  const INK = '#5b6472', GRID = '#e6e8ee', BLUE = '#3b5bdb', GREY = '#9aa3b2', GREEN = '#2f9e6b';
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.color = INK;
+  const axes = (yTitle) => ({
+    x: { grid: { display: false } },
+    y: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: yTitle } }
+  });
+
+  new Chart(document.getElementById('burndown'), {
+    type: 'line',
+    data: { labels: burndown.labels, datasets: [
+      { label: 'Ideal', data: burndown.ideal, borderColor: GREY, borderDash: [6, 5], borderWidth: 2, pointRadius: 0 },
+      { label: 'Remaining', data: burndown.actual, borderColor: BLUE, backgroundColor: BLUE, borderWidth: 2.5, pointRadius: 3, stepped: false }
+    ]},
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      scales: axes('Story points'), plugins: { legend: { position: 'bottom' } } }
+  });
+
+  if (document.getElementById('velocity')) new Chart(document.getElementById('velocity'), {
+    type: 'bar',
+    data: { labels: velocity.labels, datasets: [
+      { label: 'Committed', data: velocity.committed, backgroundColor: GREY, borderRadius: 4 },
+      { label: 'Completed', data: velocity.completed, backgroundColor: BLUE, borderRadius: 4 }
+    ]},
+    options: { maintainAspectRatio: false, scales: axes('Story points'), plugins: { legend: { position: 'bottom' } } }
+  });
+
+  if (document.getElementById('workload')) new Chart(document.getElementById('workload'), {
+    type: 'bar',
+    data: { labels: workload.labels, datasets: [
+      { label: 'Done', data: workload.done, backgroundColor: GREEN, borderRadius: 4 },
+      { label: 'Still open', data: workload.open, backgroundColor: BLUE, borderRadius: 4 }
+    ]},
+    options: { maintainAspectRatio: false, indexAxis: 'y',
+      scales: { x: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: 'Story points' } },
+                y: { stacked: true, grid: { display: false } } },
+      plugins: { legend: { position: 'bottom' } } }
+  });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{% macro task_row(t, project) %}
+<li class="row-item" data-id="{{ t.id }}" data-points="{{ t.points }}">
+  <span class="grip" title="Drag">⋮⋮</span>
+  <span class="tag tag-{{ t.type }}">{{ t.type }}</span>
+  <a class="row-title" draggable="false" href="{{ url_for('task_detail', pid=project.id, tid=t.id) }}">
+    <span class="tkey">{{ project.key }}-{{ t.number }}</span>{{ t.title }}
+  </a>
+  {% if t.status != 'todo' %}<span class="status status-{{ t.status }}">{{ status_label[t.status] }}</span>{% endif %}
+  <span class="prio prio-{{ t.priority }}" title="{{ t.priority }} priority">{{ t.priority }}</span>
+  {% if t.assignee_name %}<span class="avatar" title="{{ t.assignee_name }}">{{ t.assignee_name|initials }}</span>
+  {% else %}<span class="avatar avatar-empty" title="Unassigned">–</span>{% endif %}
+  <span class="pts" title="Story points">{{ t.points }}</span>
+</li>
+{% endmacro %}
+
+{% macro task_card(t, project) %}
+<li class="card" data-id="{{ t.id }}" data-points="{{ t.points }}">
+  <a class="card-title" draggable="false" href="{{ url_for('task_detail', pid=project.id, tid=t.id) }}"><span class="tkey">{{ project.key }}-{{ t.number }}</span>{{ t.title }}</a>
+  <div class="card-meta">
+    <span class="tag tag-{{ t.type }}">{{ t.type }}</span>
+    <span class="prio prio-{{ t.priority }}">{{ t.priority }}</span>
+    <span class="spacer"></span>
+    {% if t.due_date %}<span class="due {{ 'late' if t.due_date < today and t.status != 'done' }}" title="Due date">{{ t.due_date|nice_date }}</span>{% endif %}
+    <span class="pts">{{ t.points }}</span>
+    {% if t.assignee_name %}<span class="avatar" title="{{ t.assignee_name }}">{{ t.assignee_name|initials }}</span>
+    {% else %}<span class="avatar avatar-empty" title="Unassigned">–</span>{% endif %}
+  </div>
+</li>
+{% endmacro %}

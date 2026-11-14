@@ -1,0 +1,102 @@
+{% extends "project_base.html" %}
+{% from "_macros.html" import task_row with context %}
+{% block pcontent %}
+<div class="two-col wide-left" id="planner" data-pid="{{ project.id }}" data-velocity="{{ velocity if velocity is not none else '' }}">
+
+  <section>
+    <div class="section-head">
+      <h2>Product backlog <span class="count" data-count-for="backlog">{{ backlog_tasks|length }}</span></h2>
+      <span class="muted small">Highest priority on top. Drag to reorder or into a sprint.</span>
+    </div>
+
+    <form method="post" action="{{ url_for('create_task', pid=project.id) }}" class="panel add-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="text" name="title" placeholder="As a user, I want to…" maxlength="160" required>
+      <select name="type" title="Type">{% for t in TYPES %}<option value="{{ t }}">{{ t|capitalize }}</option>{% endfor %}</select>
+      <select name="priority" title="Priority">
+        {% for p in PRIORITIES %}<option value="{{ p }}" {{ 'selected' if p == 'medium' }}>{{ p|capitalize }}</option>{% endfor %}
+      </select>
+      <input type="number" name="points" min="0" max="100" value="3" title="Story points" class="narrow">
+      <button class="btn btn-primary">Add</button>
+    </form>
+
+    <div class="plan-card">
+      <ul class="plan-list" data-sprint="" id="list-backlog">
+        {% for t in backlog_tasks %}{{ task_row(t, project) }}{% endfor %}
+      </ul>
+      <div class="plan-foot"><span class="muted small">Total</span> <span class="pts pts-total">0</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Sprints</h2>
+      {% if velocity is not none %}<span class="muted small">Average velocity: {{ velocity }} points per sprint</span>{% endif %}
+    </div>
+
+    {% for item in open_sprints %}
+    {% set s = item.sprint %}
+    <div class="plan-card sprint-card {{ 'is-active' if s.status == 'active' }}">
+      <div class="sprint-head">
+        <div>
+          <strong>{{ s.name }}</strong>
+          <span class="status status-{{ 'in_progress' if s.status == 'active' else 'todo' }}">{{ 'Active' if s.status == 'active' else 'Planned' }}</span>
+          <div class="muted small">{{ s.start_date|nice_date }} – {{ s.end_date|nice_date }}{% if s.goal %} · Goal: {{ s.goal }}{% endif %}</div>
+        </div>
+        {% if role == 'scrum_master' %}
+        <div class="btn-row">
+          {% if s.status == 'planned' %}
+          <form method="post" action="{{ url_for('start_sprint', pid=project.id, sid=s.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-primary btn-sm">Start sprint</button></form>
+          <form method="post" action="{{ url_for('delete_sprint', pid=project.id, sid=s.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm">Delete</button></form>
+          {% else %}
+          <form method="post" action="{{ url_for('complete_sprint', pid=project.id, sid=s.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm">Complete sprint</button></form>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <ul class="plan-list" data-sprint="{{ s.id }}">
+        {% for t in item.tasks %}{{ task_row(t, project) }}{% endfor %}
+      </ul>
+      <div class="plan-foot">
+        <span class="cap-warn" hidden>Above average velocity ({{ velocity }}). The team may be over-committed.</span>
+        <span class="muted small">Sprint total</span> <span class="pts pts-total">0</span>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">No sprint planned yet.{% if role != 'scrum_master' %} The Scrum Master creates sprints.{% endif %}</p>
+    {% endfor %}
+
+    {% if role == 'scrum_master' %}
+    <details class="panel" {{ 'open' if not open_sprints }}>
+      <summary>Create a sprint</summary>
+      <form method="post" action="{{ url_for('create_sprint', pid=project.id) }}" class="stack">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label>Name <input type="text" name="name" value="Sprint {{ next_sprint_no }}" maxlength="60" required></label>
+        <label>Sprint goal <input type="text" name="goal" maxlength="160" placeholder="What should be working at the end?"></label>
+        <div class="form-row">
+          <label>Start <input type="date" name="start_date" value="{{ default_start }}" required></label>
+          <label>End <input type="date" name="end_date" value="{{ default_end }}" required></label>
+        </div>
+        <div><button class="btn btn-primary">Create sprint</button></div>
+      </form>
+    </details>
+    {% endif %}
+
+    {% if done_sprints %}
+    <h3>Completed sprints</h3>
+    <table class="table">
+      <thead><tr><th>Sprint</th><th>Dates</th><th class="num">Committed</th><th class="num">Done</th><th></th></tr></thead>
+      <tbody>
+      {% for s in done_sprints %}
+        <tr><td>{{ s.name }}</td><td>{{ s.start_date|nice_date }} – {{ s.end_date|nice_date }}</td>
+          <td class="num">{{ s.committed_points }}</td><td class="num">{{ s.completed_points }}</td>
+          <td><a href="{{ url_for('reports', pid=project.id, sprint=s.id) }}">Report</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
